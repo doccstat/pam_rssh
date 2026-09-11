@@ -262,6 +262,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires an external SSH_AUTH_SOCK test agent"]
     fn sshagent_list_identities() {
         init_log();
         enable_debug_log();
@@ -278,6 +279,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires an external SSH_AUTH_SOCK test agent"]
     fn sshagent_auth() {
         init_log();
         enable_debug_log();
@@ -302,6 +304,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires an external SSH_AUTH_SOCK test agent"]
     fn sshagent_more_auth() {
         init_log();
         let sock = std::env::var("SSH_AUTH_SOCK").unwrap();

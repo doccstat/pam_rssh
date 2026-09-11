@@ -20,6 +20,21 @@ pub struct AgentClient<'a> {
 }
 
 static NET_RETRY_CNT: u32 = 3;
+// The agent protocol carries a u32 length prefix.  PAM runs this parser as
+// root, so never allocate an unbounded buffer based on a client-controlled
+// value from the forwarded agent socket.
+const MAX_AGENT_MESSAGE_LEN: usize = 1024 * 1024;
+
+fn checked_message_len(raw_length: u32) -> Result<usize, ErrType> {
+    let length = raw_length as usize;
+    if length > MAX_AGENT_MESSAGE_LEN {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("SSH-agent message is too large: {} bytes", length),
+        ).into());
+    }
+    Ok(length)
+}
 
 impl<'a> AgentClient<'a> {
     pub fn new(addr: &str) -> AgentClient<'_> {
@@ -27,7 +42,7 @@ impl<'a> AgentClient<'a> {
     }
 
     fn read_message(stream: &mut Stream) -> Result<Message, ErrType> {
-        let length = stream.read_u32::<BigEndian>()? as usize;
+        let length = checked_message_len(stream.read_u32::<BigEndian>()?)?;
         debug!("read_message len={}", length);
         let mut buffer: Vec<u8> = vec![0; length as usize];
         stream.read_exact(buffer.as_mut_slice())?;
@@ -129,5 +144,16 @@ impl<'a> AgentClient<'a> {
         } else {
             Err(RsshErr::InvalidRspErr.into_ptr())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{checked_message_len, MAX_AGENT_MESSAGE_LEN};
+
+    #[test]
+    fn rejects_unbounded_agent_messages() {
+        assert_eq!(checked_message_len(MAX_AGENT_MESSAGE_LEN as u32).unwrap(), MAX_AGENT_MESSAGE_LEN);
+        assert!(checked_message_len((MAX_AGENT_MESSAGE_LEN as u32) + 1).is_err());
     }
 }

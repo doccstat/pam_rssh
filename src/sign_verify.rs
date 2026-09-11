@@ -11,6 +11,14 @@ use super::error::RsshErr;
 
 type ErrType = Box<dyn std::error::Error>;
 
+fn require_user_presence(flags: u8) -> Result<(), ErrType> {
+    // SSH_SK_USER_PRESENCE_REQD, defined by the SSH security-key protocol.
+    if flags & 0x01 == 0 {
+        return Err(RsshErr::SignVerifyErr.into_ptr());
+    }
+    Ok(())
+}
+
 trait ToOpensslKey {
     type OpensslKeyResult;
     fn to_pkey(&self) -> Self::OpensslKeyResult;
@@ -144,6 +152,10 @@ fn preprocess_content_and_sig(
         // regenerate the message as per U2F spec
         PublicKey::SkEcDsa(_) | PublicKey::SkEd25519(_) => {
             let sig: proto::SkSignature = from_bytes(ssh_sig)?;
+            // SSH_SK_USER_PRESENCE_REQD. Requiring this bit prevents a valid
+            // cryptographic signature without a physical key interaction from
+            // satisfying PAM authentication.
+            require_user_presence(sig.flags)?;
             let app = match pubkey {
                 PublicKey::SkEcDsa(k) => &k.application,
                 PublicKey::SkEd25519(k) => &k.application,
@@ -161,6 +173,18 @@ fn preprocess_content_and_sig(
             let sig: proto::Signature = from_bytes(ssh_sig)?;
             Ok((msg.to_vec(), decode_signature_blob(&sig.blob, pubkey)?))
         }
+    }
+}
+
+#[cfg(test)]
+mod security_key_tests {
+    use super::require_user_presence;
+
+    #[test]
+    fn requires_user_presence_flag() {
+        assert!(require_user_presence(0x01).is_ok());
+        assert!(require_user_presence(0x05).is_ok());
+        assert!(require_user_presence(0x00).is_err());
     }
 }
 
