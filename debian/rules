@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release
+
+override_dh_auto_install:
+	mkdir -p debian/pam-rssh/lib/$(DEB_HOST_MULTIARCH)/security/
+	cp target/release/libpam_rssh.so debian/pam-rssh/lib/$(DEB_HOST_MULTIARCH)/security/
+
+override_dh_auto_test: export SSH_AUTH_SOCK = /tmp/ssh-agent.sock
+override_dh_auto_test:
+	test -f $(HOME)/.ssh/id_ecdsa521 || ssh-keygen -N "" -t ecdsa -b 521 -f $(HOME)/.ssh/id_ecdsa521
+	test -f $(HOME)/.ssh/id_ecdsa384 || ssh-keygen -N "" -t ecdsa -b 384 -f $(HOME)/.ssh/id_ecdsa384
+	test -f $(HOME)/.ssh/id_ecdsa256 || ssh-keygen -N "" -t ecdsa -b 256 -f $(HOME)/.ssh/id_ecdsa256
+	test -f $(HOME)/.ssh/id_ed25519 || ssh-keygen -N "" -t ed25519 -f $(HOME)/.ssh/id_ed25519
+	test -f $(HOME)/.ssh/id_rsa || ssh-keygen -N "" -t rsa -f $(HOME)/.ssh/id_rsa
+	ssh-agent -a $$SSH_AUTH_SOCK
+	ssh-add $(HOME)/.ssh/id_ecdsa521
+	ssh-add $(HOME)/.ssh/id_ecdsa384
+	ssh-add $(HOME)/.ssh/id_ecdsa256
+	ssh-add $(HOME)/.ssh/id_ed25519
+	ssh-add $(HOME)/.ssh/id_rsa
+	cp $(HOME)/.ssh/id_rsa.pub $(HOME)/.ssh/authorized_keys
+	cargo test --release

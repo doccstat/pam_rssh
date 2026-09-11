@@ -1,0 +1,3 @@
+[submodule "dep/ssh-agent.rs"]
+	path = dep/ssh-agent.rs
+	url = https://github.com/z4yx/ssh-agent.rs.git

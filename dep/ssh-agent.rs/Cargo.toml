@@ -1,0 +1,37 @@
+[package]
+name = "ssh-agent"
+description = "Library for implementing an SSH agent"
+version = "0.2.3"
+license = "MIT"
+authors = [
+    "Nicolas Trippar <ntrippar@gmail.com>",
+    "Federico Pomar <fmpomar@users.noreply.github.com>"
+]
+repository = "https://github.com/sekey/ssh-agent.rs"
+readme = "README.md"
+edition = "2018"
+
+[badges]
+travis-ci = { repository = "sekey/ssh-agent.rs" }
+codecov = { repository = "sekey/ssh-agent.rs" }
+
+[dependencies]
+byteorder = "1.2.7"
+serde = {version = "1.0.87", features = ["derive"]}
+futures = "0.1.25"
+log = "0.4.6"
+
+bytes = { version = "0.4.11", optional = true }
+tokio = { version = "0.1.15", optional = true }
+tokio-uds = { version = "0.2.5", optional = true }
+
+[features]
+agent = ["tokio", "tokio-uds", "bytes"]
+
+[[example]]
+name = "key_storage"
+required-features = ["agent"]
+
+[dev-dependencies]
+env_logger = "0.6.0"
+openssl = "0.10.16"
