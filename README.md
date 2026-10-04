@@ -1,6 +1,17 @@
 # PAM-RSSH
 
-[![Rust](https://github.com/z4yx/pam_rssh/actions/workflows/rust.yml/badge.svg)](https://github.com/z4yx/pam_rssh/actions/workflows/rust.yml)
+[![Rust](https://github.com/doccstat/pam_rssh/actions/workflows/rust.yml/badge.svg)](https://github.com/doccstat/pam_rssh/actions/workflows/rust.yml)
+
+## doccstat fork
+
+This fork preserves the original [z4yx/pam_rssh](https://github.com/z4yx/pam_rssh)
+Git history. Local changes require security-key user presence, bound forwarded
+SSH-agent responses to 1 MiB before allocation, and make the three external-agent
+tests opt-in (`cargo test --locked -- --ignored` with a disposable test agent).
+The `ssh-agent.rs` dependency is vendored at
+`802b94ccf2e00ac33a3863300d0769f02b62d807`, so no submodule fetch is needed.
+Depot maintains the source and exports signed local changes to this fork.
+Build locally before installing this privileged PAM module.
 
 This PAM module provides ssh-agent based authentication. The primary design goal is to avoid typing password when you `sudo` on remote servers. Instead, you can simply touch your hardware security key (e.g. Yubikey/Canokey) to fulfill user verification. The process is done by forwarding the remote authentication request to client-side ssh-agent as a signature request.
 
@@ -25,11 +36,12 @@ Prerequisites:
 - OpenSSL (>=1.1.1) 
 - libpam
 - Rust (with Cargo)
+- libclang development files (for the native syslog binding)
 
-Clone this repo with **a submodule**.
+Clone this fork; the dependency is already vendored.
 
 ```
-git clone --recurse-submodule https://github.com/z4yx/pam_rssh.git
+git clone https://github.com/doccstat/pam_rssh.git
 cd pam_rssh
 ```
 
@@ -50,10 +62,10 @@ The `<pam module path>` is specific to certain Linux distributions.
 
 
 ## Build using Docker (for cross compilation)
-Clone this repo with **a submodule**.
+Clone this fork; no submodule initialization is required.
 
 ```
-git clone --recurse-submodule https://github.com/z4yx/pam_rssh.git
+git clone https://github.com/doccstat/pam_rssh.git
 cd pam_rssh
 ```
 
@@ -72,6 +84,25 @@ The `<pam module path>` is specific to certain Linux distributions.
 | Arch Linux   | `/usr/lib/security/`                |
 | Debian       | `/lib/x86_64-linux-gnu/security/`   |
 | openSUSE     | `/lib/security/`                    |
+
+
+## Build RPM package (Fedora / RHEL)
+
+An RPM spec (`packaging/rpm/pam-rssh.spec`) and a helper script
+(`packaging/rpm/build.sh`) are provided. The spec vendors all Cargo
+dependencies so the build runs fully offline.
+
+On a Fedora/RHEL host with `rpm-build` and the Rust toolchain installed:
+
+```
+sudo dnf install rpm-build cargo rustc openssl-devel pam-devel pkgconfig \
+                 openssh-clients make gcc diffutils tar gzip
+./packaging/rpm/build.sh
+```
+
+The resulting `.rpm` files are written to `./rpm-artifacts/`. The module is
+installed to `/usr/lib64/security/libpam_rssh.so`. CI builds for Fedora
+(42/43/44) are handled by `.github/workflows/rpm-release.yml`.
 
 
 ## Config
